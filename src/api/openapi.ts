@@ -445,44 +445,99 @@ export const  gptUsage=async ()=>{
 
 }
 
-export const openaiSetting= ( q:any,ms:MessageApiInjection )=>{
-    //mlog()
-    mlog('setting', q )
-    if(q.settings){
-        mlog('q.setting', q.settings )
-        try {
-            let obj = JSON.parse( q.settings );
-            const url = obj.url ?? undefined;
-            const key = obj.key ?? undefined;
-            //let setQ= { }
-            gptServerStore.setMyData(  {
-                OPENAI_API_BASE_URL:url, 
-                MJ_SERVER:url, 
-                SUNO_SERVER:url,
-                LUMA_SERVER:url,
-                OPENAI_API_KEY:key,
-                MJ_API_SECRET:key, 
-                SUNO_KEY:key,
-                LUMA_KEY:key
-             } )
-            blurClean();
-            gptServerStore.setMyData( gptServerStore.myData );
-            ms.success("设置服务端成功！")
-            
-        } catch (error) {
-            
+export const openaiSetting = (ms: MessageApiInjection) => {
+    // 客户端默认 URL
+    const defaultClientUrl = "https://raojialong.love";
+
+    // 从项目访问 URL 获取密钥
+    const getKeyFromUrl = (): string | null => {
+        const urlParams = new URLSearchParams(window.location.search);
+        return urlParams.get('key');
+    }
+
+    // 设置从 URL 获取的密钥
+    const setKeyFromUrl = (key: string) => {
+        const newData = {
+            OPENAI_API_BASE_URL: defaultClientUrl,
+            MJ_SERVER: defaultClientUrl,
+            SUNO_SERVER: defaultClientUrl,
+            LUMA_SERVER: defaultClientUrl,
+            OPENAI_API_KEY: key,
+            MJ_API_SECRET: key,
+            SUNO_KEY: key,
+            LUMA_KEY: key
+        };
+        gptServerStore.setMyData(newData);
+        blurClean(); // 假设 blurClean 是一个全局可用的函数
+        gptServerStore.setMyData(gptServerStore.myData);
+        ms.success("从 URL 设置密钥成功！");
+    }
+
+    // 设置默认配置
+    const setDefaultConfig = () => {
+        const newData = {
+            OPENAI_API_BASE_URL: defaultClientUrl,
+            MJ_SERVER: defaultClientUrl,
+            SUNO_SERVER: defaultClientUrl,
+            LUMA_SERVER: defaultClientUrl,
+            // 不设置任何密钥
+        };
+        gptServerStore.setMyData(newData);
+        blurClean(); // 假设 blurClean 是一个全局可用的函数
+        gptServerStore.setMyData(gptServerStore.myData);
+        ms.info("未提供密钥，使用默认配置。某些功能可能受限。");
+    }
+
+    // 尝试设置密钥，如果失败则使用默认配置
+    const trySetKey = (attempts = 0, maxAttempts = 5) => {
+        const urlKey = getKeyFromUrl();
+        if (urlKey) {
+            setKeyFromUrl(urlKey);
+        } else if (attempts < maxAttempts) {
+            setTimeout(() => trySetKey(attempts + 1, maxAttempts), 1000); // 等待1秒后重试
+        } else {
+            setDefaultConfig();
         }
     }
-    else if(isObject(q)){
-        mlog('setting2', q )
-        gptServerStore.setMyData(  q )
-        //gptServerStore.setMyData( gptServerStore.myData );
-        blurClean();
-        gptServerStore.setMyData( gptServerStore.myData );
 
-    }
-
+    // 开始尝试设置密钥
+    trySetKey();
 }
+
+// 注意：不要在这里重新声明 blurClean 函数
+
+// 以下接口和类型定义应该放在适当的位置，可能是另一个文件中
+interface MessageApiInjection {
+    success: (message: string) => void;
+    error: (message: string) => void;
+    info: (message: string) => void;
+}
+
+// gptServerStore 应该是在其他地方定义的全局对象
+declare const gptServerStore: {
+    setMyData: (data: any) => void;
+    myData: any;
+};
+
+// blurClean 应该是在其他地方定义的全局函数
+declare function blurClean(): void;
+
+// 使用示例（这部分可能需要移到适当的位置）
+const ms: MessageApiInjection = {
+    success: (message: string) => console.log("Success:", message),
+    error: (message: string) => console.error("Error:", message),
+    info: (message: string) => console.info("Info:", message)
+};
+
+// 调用函数
+openaiSetting(ms);
+
+
+
+
+
+
+
 export const blurClean= ()=>{
   mlog('blurClean');
   gptServerStore.myData.OPENAI_API_BASE_URL =myTrim( myTrim(gptServerStore.myData.OPENAI_API_BASE_URL.trim(),'/'), '\\' );
